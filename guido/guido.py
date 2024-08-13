@@ -1,7 +1,7 @@
 import logging
 
 from typing import Callable
-from messages import MessagesService
+from guido.messages import MessagesService
 
 logger = logging.getLogger(__name__)
 
