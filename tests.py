@@ -8,15 +8,18 @@ from messages import OnMemoryService, Message
 def on_memory_service():
     return OnMemoryService()
 
+
 @pytest.fixture
 def app(on_memory_service):
     return Guido(on_memory_service)
 
+
 @pytest.fixture
 def produced_message(on_memory_service):
-    message = Message('a_topic', {'data': 'test'})
+    message = Message("a_topic", {"data": "test"})
     on_memory_service.produce(message)
     return message
+
 
 def test_app(app, on_memory_service, produced_message):
     processed = []
