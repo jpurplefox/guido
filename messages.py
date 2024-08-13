@@ -22,7 +22,9 @@ class MessagesService(Protocol):
 
 class KafkaService:
     def __init__(self, bootstrap_servers: str, group_id: str):
-        self.consumer = KafkaConsumer(bootstrap_servers=bootstrap_servers, group_id=group_id)
+        self.consumer = KafkaConsumer(
+            bootstrap_servers=bootstrap_servers, group_id=group_id
+        )
 
     def subscribe(self, topics: list[str]):
         self.consumer.subscribe(topics)
@@ -32,7 +34,9 @@ class KafkaService:
 
     def get_messages(self) -> list[Message]:
         for message in self.consumer:
-            yield Message(topic=message.topic, value=json.loads(message.value.decode('utf-8')))
+            yield Message(
+                topic=message.topic, value=json.loads(message.value.decode("utf-8"))
+            )
 
 
 class OnMemoryService:
