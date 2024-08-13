@@ -3,7 +3,7 @@ import logging
 from typing import Callable
 from guido.messages import MessagesService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("guido")
 
 
 class Guido:
