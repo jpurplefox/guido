@@ -13,7 +13,7 @@ To use Kafka Consumer Helper, follow these steps:
 Install the library: Add guido to your project. For example, if you're using pip, you can install it with:
 
 ```
-pip install guido
+pip install --editable .
 ```
 
 Configure Kafka Service: Set up your Kafka service connection with the required parameters.
@@ -24,8 +24,7 @@ Create and Start the Consumer: Use the Guido class and KafkaService to create a 
 Here’s a simple example of how to use guido in your project:
 
 ```python
-from guido import Guido
-from messages import KafkaService
+from guido import Guido, KafkaService
 
 # Initialize Kafka service with connection parameters
 service = KafkaService(bootstrap_servers='localhost:29092', group_id='my_favorite_group')
@@ -39,5 +38,10 @@ def process_message(message: dict):
     print(message)
 ```
 
+Save the file as `test_app.py` and run
+
+```
+guido test_app.app
+```
 License
 This project is licensed under the MIT License. See the LICENSE file for more details.
