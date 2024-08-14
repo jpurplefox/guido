@@ -1,6 +1,10 @@
+import sys
+import os
 import importlib
 import logging
 import argparse
+
+from contextlib import contextmanager
 
 from guido.logging import init_logs
 
@@ -8,12 +12,25 @@ from guido.logging import init_logs
 logger = logging.getLogger("guido")
 
 
+@contextmanager
+def ensure_cwd_in_path():
+    cwd = os.getcwd()
+    if cwd in sys.path:
+        yield
+    else:
+        sys.path.insert(0, cwd)
+        yield
+        sys.path.remove(cwd)
+
+
 def get_app(app_path):
     full_path = app_path.split(".")
     app_path = ".".join(full_path[:-1])
     app_name = full_path[-1]
 
-    module = importlib.import_module(app_path)
+    with ensure_cwd_in_path():
+        module = importlib.import_module(app_path)
+
     app = getattr(module, app_name)
     return app
 
