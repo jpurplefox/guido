@@ -1,7 +1,7 @@
 import pytest
 
 from guido import Guido
-from messages import OnMemoryService, Message
+from guido.messages import OnMemoryService, Message
 
 
 @pytest.fixture

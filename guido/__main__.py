@@ -6,7 +6,7 @@ import argparse
 
 from contextlib import contextmanager
 
-from guido.logging import init_logs
+from guido.logconfig import init_logs
 
 
 logger = logging.getLogger("guido")
