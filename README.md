@@ -1,4 +1,4 @@
-# guido
+# Guido
 Guido is a library that simplifies the integration with Apache Kafka and streamlines the creation of Kafka consumers. It offers easy setup, automatic offset management, and built-in error handling, helping you quickly build reliable and efficient Kafka consumer applications.
 
 ## Features
@@ -13,7 +13,7 @@ To use Kafka Consumer Helper, follow these steps:
 Install the library: Add guido to your project. For example, if you're using pip, you can install it with:
 
 ```
-pip install --editable .
+pip install guido-kafka
 ```
 
 Configure Kafka Service: Set up your Kafka service connection with the required parameters.
