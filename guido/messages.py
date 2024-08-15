@@ -12,6 +12,13 @@ class Message:
     value: str
 
 
+@dataclass
+class ProducedMessage:
+    topic: str
+    value: str
+    offset: int
+
+
 class MessagesService(Protocol):
     def subscribe(self, topics: list[str]):
         ...
@@ -46,18 +53,51 @@ class OnMemoryService:
     def __init__(self):
         self.messages = []
         self.subscripted = []
-        self.commited_messages = 0
+        self.commited_messages = {}
+        self.consumed_messages = []
 
     def subscribe(self, topics: list[str]):
         self.subscripted = topics
 
     def commit(self):
-        self.commited_messages += 1
+        for topic in self.subscripted:
+            self.commit_topic(topic)
+
+    def commit_topic(self, topic: str):
+        consumed_messages = [
+            message for message in self.consumed_messages if message.topic == topic
+        ]
+        if consumed_messages:
+            self.commited_messages[topic] = consumed_messages[-1].offset
 
     def get_messages(self) -> list[Message]:
         for message in self.messages:
             if message.topic in self.subscripted:
+                self.consumed_messages.append(message)
                 yield message
 
-    def produce(self, message: Message):
-        self.messages.append(message)
+    def get_next_offset(self, topic: str) -> int:
+        messages_in_topic = [
+            message for message in self.messages if message.topic == topic
+        ]
+        if not messages_in_topic:
+            offset = 0
+        else:
+            offset = messages_in_topic[-1] + 1
+        return offset
+
+    def produce(self, message: Message) -> ProducedMessage:
+        produced_message = ProducedMessage(
+            topic=message.topic,
+            value=message.value,
+            offset=self.get_next_offset(message.topic),
+        )
+        self.messages.append(produced_message)
+        return produced_message
+
+    def get_last_commited(self, topic: str) -> int:
+        try:
+            last_commited = self.commited_messages[topic]
+        except KeyError:
+            last_commited = None
+        return last_commited

@@ -13,5 +13,5 @@ setuptools.setup(
     entry_points={"console_scripts": ["guido=guido.__main__:main"]},
     install_requires=requirements,
     long_description=long_description,
-    long_description_content_type="text/markdown"
+    long_description_content_type="text/markdown",
 )

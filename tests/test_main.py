@@ -17,11 +17,11 @@ def app(on_memory_service):
 @pytest.fixture
 def produced_message(on_memory_service):
     message = Message("a_topic", {"data": "test"})
-    on_memory_service.produce(message)
-    return message
+    produced_message = on_memory_service.produce(message)
+    return produced_message
 
 
-def test_app(app, on_memory_service, produced_message):
+def test_consume_a_message(app, on_memory_service, produced_message):
     processed = []
 
     @app.subscribe(produced_message.topic)
@@ -30,5 +30,8 @@ def test_app(app, on_memory_service, produced_message):
 
     app.run()
 
-    assert on_memory_service.commited_messages == 1
+    assert (
+        on_memory_service.get_last_commited(produced_message.topic)
+        == produced_message.offset
+    )
     assert processed == [produced_message.value]
