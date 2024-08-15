@@ -15,10 +15,23 @@ def app(on_memory_service):
 
 
 @pytest.fixture
-def produced_message(on_memory_service):
-    message = Message("a_topic", {"data": "test"})
-    produced_message = on_memory_service.produce(message)
-    return produced_message
+def message(app):
+    return Message("a_topic", {"data": "test"})
+
+
+@pytest.fixture
+def produced_message(app, message):
+    return app.produce(message)
+
+
+def test_produce_a_message(app, message):
+    produced_message = app.produce(message)
+    app.messages_service.subscribe([message.topic])
+
+    assert produced_message.topic == message.topic
+    assert produced_message.value == message.value
+    assert produced_message.offset == 0
+    assert list(app.messages_service.get_messages()) == [produced_message]
 
 
 def test_consume_a_message(app, on_memory_service, produced_message):

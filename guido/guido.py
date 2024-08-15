@@ -1,7 +1,7 @@
 import logging
 
 from typing import Callable
-from guido.messages import MessagesService
+from guido.messages import MessagesService, Message, ProducedMessage
 
 logger = logging.getLogger("guido")
 
@@ -16,6 +16,10 @@ class Guido:
             self._topics[topic] = func
 
         return decorator
+
+    def produce(self, message: Message) -> ProducedMessage:
+        produced_message = self.messages_service.produce(message)
+        return produced_message
 
     def run(self):
         logger.info(f"Subscribing to topics: {self._topics.keys()}")

@@ -1,6 +1,6 @@
 import json
 
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 
 from typing import Callable, Protocol
 from dataclasses import dataclass
@@ -9,13 +9,13 @@ from dataclasses import dataclass
 @dataclass
 class Message:
     topic: str
-    value: str
+    value: dict
 
 
 @dataclass
 class ProducedMessage:
     topic: str
-    value: str
+    value: dict
     offset: int
 
 
@@ -26,7 +26,10 @@ class MessagesService(Protocol):
     def commit(self):
         ...
 
-    def get_messages(self) -> list[Message]:
+    def get_messages(self) -> list[ProducedMessage]:
+        ...
+
+    def produce(self, message: Message) -> ProducedMessage:
         ...
 
 
@@ -35,6 +38,7 @@ class KafkaService:
         self.consumer = KafkaConsumer(
             bootstrap_servers=bootstrap_servers, group_id=group_id
         )
+        self.producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
     def subscribe(self, topics: list[str]):
         self.consumer.subscribe(topics)
@@ -42,11 +46,20 @@ class KafkaService:
     def commit(self):
         self.consumer.commit()
 
-    def get_messages(self) -> list[Message]:
+    def get_messages(self) -> list[ProducedMessage]:
         for message in self.consumer:
             yield Message(
                 topic=message.topic, value=json.loads(message.value.decode("utf-8"))
             )
+
+    def produce(self, message: Message) -> ProducedMessage:
+        future = self.producer.send(
+            message.topic, json.dumps(message.value).encode("utf-8")
+        )
+        result = future.get()
+        return ProducedMessage(
+            topic=message.topic, value=message.value, offset=result.offset
+        )
 
 
 class OnMemoryService:
