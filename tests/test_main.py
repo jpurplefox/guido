@@ -34,7 +34,7 @@ def test_produce_a_message(app, message):
     assert list(app.messages_service.get_messages()) == [produced_message]
 
 
-def test_consume_a_message(app, on_memory_service, produced_message):
+def test_consume_a_message(app, produced_message):
     processed = []
 
     @app.subscribe(produced_message.topic)
@@ -43,8 +43,5 @@ def test_consume_a_message(app, on_memory_service, produced_message):
 
     app.run()
 
-    assert (
-        on_memory_service.get_last_commited(produced_message.topic)
-        == produced_message.offset
-    )
+    assert app.get_last_committed(produced_message.topic) == produced_message.offset
     assert processed == [produced_message.value]

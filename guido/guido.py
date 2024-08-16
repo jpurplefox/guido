@@ -21,6 +21,9 @@ class Guido:
         produced_message = self.messages_service.produce(message)
         return produced_message
 
+    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+        return self.messages_service.get_last_committed(topic, partition)
+
     def run(self):
         logger.info(f"Subscribing to topics: {self._topics.keys()}")
         self.messages_service.subscribe(self._topics.keys())

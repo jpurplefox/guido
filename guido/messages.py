@@ -1,6 +1,6 @@
 import json
 
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer, KafkaProducer, TopicPartition
 
 from typing import Callable, Protocol
 from dataclasses import dataclass
@@ -17,6 +17,7 @@ class ProducedMessage:
     topic: str
     value: dict
     offset: int
+    partition: int
 
 
 class MessagesService(Protocol):
@@ -30,6 +31,9 @@ class MessagesService(Protocol):
         ...
 
     def produce(self, message: Message) -> ProducedMessage:
+        ...
+
+    def get_last_committed(self, topic: str, partition: int = 0) -> int:
         ...
 
 
@@ -48,8 +52,11 @@ class KafkaService:
 
     def get_messages(self) -> list[ProducedMessage]:
         for message in self.consumer:
-            yield Message(
-                topic=message.topic, value=json.loads(message.value.decode("utf-8"))
+            yield ProducedMessage(
+                topic=message.topic,
+                value=json.loads(message.value.decode("utf-8")),
+                offset=message.offset,
+                partition=message.partition,
             )
 
     def produce(self, message: Message) -> ProducedMessage:
@@ -58,15 +65,21 @@ class KafkaService:
         )
         result = future.get()
         return ProducedMessage(
-            topic=message.topic, value=message.value, offset=result.offset
+            topic=message.topic,
+            value=message.value,
+            offset=result.offset,
+            partition=result.partition,
         )
+
+    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+        return self.consumer.committed(TopicPartition(topic, partition))
 
 
 class OnMemoryService:
     def __init__(self):
         self.messages = []
         self.subscripted = []
-        self.commited_messages = {}
+        self.committed_messages = {}
         self.consumed_messages = []
 
     def subscribe(self, topics: list[str]):
@@ -81,7 +94,7 @@ class OnMemoryService:
             message for message in self.consumed_messages if message.topic == topic
         ]
         if consumed_messages:
-            self.commited_messages[topic] = consumed_messages[-1].offset
+            self.committed_messages[topic] = consumed_messages[-1].offset
 
     def get_messages(self) -> list[Message]:
         for message in self.messages:
@@ -104,13 +117,17 @@ class OnMemoryService:
             topic=message.topic,
             value=message.value,
             offset=self.get_next_offset(message.topic),
+            partition=0,  # Does not allow partitions
         )
         self.messages.append(produced_message)
         return produced_message
 
-    def get_last_commited(self, topic: str) -> int:
+    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+        if partition != 0:  # Does not allow partitions
+            return None
+
         try:
-            last_commited = self.commited_messages[topic]
+            last_committed = self.committed_messages[topic]
         except KeyError:
-            last_commited = None
-        return last_commited
+            last_committed = None
+        return last_committed
