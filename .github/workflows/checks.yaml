@@ -21,3 +21,15 @@ jobs:
         run: pip install -r requirements/dev.txt
       - name: Run mypy
         run: mypy guido/__main__.py
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requirements
+        run: pip install -r requirements/dev.txt -r requirements/base.txt .
+      - name: Run pytest
+        run: pytest
