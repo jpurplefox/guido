@@ -1,8 +1,15 @@
-name: black
+name: Checks
 on: [push]
 jobs:
-  linter_name:
-    name: Mypy
+  black:
+    name: Black
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rickstaa/action-black@v1
+        with:
+          black_args: "."
+  mypy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
