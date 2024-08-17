@@ -43,5 +43,13 @@ Save the file as `test_app.py` and run
 ```
 guido test_app.app
 ```
-License
+
+### Producing messages
+You can produce messages easily through a command
+```
+guido test_app.app produce my_topic '{"foo": "bar"}'
+```
+Message to be produced must be a valid JSON
+
+## License
 This project is licensed under the MIT License. See the LICENSE file for more details.
