@@ -1,8 +1,8 @@
 import json
 
-from kafka import KafkaConsumer, KafkaProducer, TopicPartition
+from kafka import KafkaConsumer, KafkaProducer, TopicPartition  # type: ignore
 
-from typing import Callable, Protocol
+from typing import Callable, Protocol, Iterator
 from dataclasses import dataclass
 
 
@@ -27,13 +27,13 @@ class MessagesService(Protocol):
     def commit(self):
         ...
 
-    def get_messages(self) -> list[ProducedMessage]:
+    def get_messages(self) -> Iterator[ProducedMessage]:
         ...
 
     def produce(self, message: Message) -> ProducedMessage:
         ...
 
-    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+    def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         ...
 
 
@@ -50,7 +50,7 @@ class KafkaService:
     def commit(self):
         self.consumer.commit()
 
-    def get_messages(self) -> list[ProducedMessage]:
+    def get_messages(self) -> Iterator[ProducedMessage]:
         for message in self.consumer:
             yield ProducedMessage(
                 topic=message.topic,
@@ -71,7 +71,7 @@ class KafkaService:
             partition=result.partition,
         )
 
-    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+    def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         return self.consumer.committed(TopicPartition(topic, partition))
 
 
@@ -96,7 +96,7 @@ class OnMemoryService:
         if consumed_messages:
             self.committed_messages[topic] = consumed_messages[-1].offset
 
-    def get_messages(self) -> list[Message]:
+    def get_messages(self) -> Iterator[Message]:
         for message in self.messages:
             if message.topic in self.subscripted:
                 self.consumed_messages.append(message)
@@ -122,7 +122,7 @@ class OnMemoryService:
         self.messages.append(produced_message)
         return produced_message
 
-    def get_last_committed(self, topic: str, partition: int = 0) -> int:
+    def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         if partition != 0:  # Does not allow partitions
             return None
 
