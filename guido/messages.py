@@ -36,6 +36,9 @@ class MessagesService(Protocol):
     def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         ...
 
+    def get_pending_messages(self, topic: str, partition: int = 0) -> int:
+        ...
+
 
 class KafkaService:
     def __init__(self, bootstrap_servers: str, group_id: str):
@@ -74,6 +77,20 @@ class KafkaService:
     def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         return self.consumer.committed(TopicPartition(topic, partition))
 
+    def get_end_offset(self, topic: str, partition: int = 0) -> int:
+        topic_partition = TopicPartition(topic, partition)
+        try:
+            end_offset = self.consumer.end_offsets([topic_partition])[topic_partition]
+        except KeyError:
+            end_offset = -1
+        return end_offset
+
+    def get_pending_messages(self, topic: str, partition: int = 0) -> int:
+        last_committed = self.get_last_committed(topic, partition)
+        starts = last_committed if last_committed is not None else -1
+        ends = self.get_end_offset(topic, partition)
+        return ends - starts
+
 
 class OnMemoryService:
     def __init__(self):
@@ -102,15 +119,18 @@ class OnMemoryService:
                 self.consumed_messages.append(message)
                 yield message
 
-    def get_next_offset(self, topic: str) -> int:
+    def get_last_offset(self, topic: str) -> int:
         messages_in_topic = [
             message for message in self.messages if message.topic == topic
         ]
         if not messages_in_topic:
-            offset = 0
+            offset = -1
         else:
-            offset = messages_in_topic[-1] + 1
+            offset = messages_in_topic[-1].offset
         return offset
+
+    def get_next_offset(self, topic: str) -> int:
+        return self.get_last_offset(topic) + 1
 
     def produce(self, message: Message) -> ProducedMessage:
         produced_message = ProducedMessage(
@@ -131,3 +151,13 @@ class OnMemoryService:
         except KeyError:
             last_committed = None
         return last_committed
+
+    def get_pending_messages(self, topic: str, partition: int = 0) -> int:
+        if partition != 0:  # Does not allow partitions
+            return 0
+
+        last_committed = self.get_last_committed(topic, partition)
+        starts = last_committed if last_committed is not None else -1
+        ends = self.get_last_offset(topic)
+
+        return ends - starts

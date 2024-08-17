@@ -30,6 +30,9 @@ class Guido:
     def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
         return self.messages_service.get_last_committed(topic, partition)
 
+    def get_pending_messages(self, topic: str, partition: int = 0) -> int:
+        return self.messages_service.get_pending_messages(topic, partition)
+
     def run(self):
         logger.info(f"Subscribing to topics: {self._topics.keys()}")
         self.messages_service.subscribe(self._topics.keys())

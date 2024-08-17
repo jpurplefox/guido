@@ -45,3 +45,11 @@ def test_consume_a_message(app, produced_message):
 
     assert app.get_last_committed(produced_message.topic) == produced_message.offset
     assert processed == [produced_message.value]
+
+
+def test_get_pending_messages(app, message):
+    assert app.get_pending_messages(message.topic) == 0
+
+    produced_message = app.produce(message)
+
+    assert app.get_pending_messages(produced_message.topic) == 1

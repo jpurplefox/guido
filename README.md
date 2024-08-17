@@ -51,5 +51,11 @@ guido test_app.app produce my_topic '{"foo": "bar"}'
 ```
 Message to be produced must be a valid JSON
 
+### Checking pending messages
+Also you can check how many messages there are in a topic partition pending to process
+```
+guido test_app.app pending-messages my_topic
+```
+
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.

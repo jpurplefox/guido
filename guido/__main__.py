@@ -58,6 +58,28 @@ def produce(app, args):
     app.produce(message)
 
 
+def add_pending_messages_parser(subparsers):
+    subparser = subparsers.add_parser(
+        "pending-messages", help="Get pending messages in a topic partition"
+    )
+    subparser.add_argument("topic", help="Topic to check for pending messages")
+    subparser.add_argument(
+        "-p",
+        "--partition",
+        help="partition to check for pending messages",
+        type=int,
+        default=0,
+        required=False,
+    )
+
+
+def pending_messages(app, args):
+    pending_messages = app.get_pending_messages(args.topic, args.partition)
+    logger.info(
+        f"Pending messages for topic={args.topic} partition={args.partition}: {pending_messages}"
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="guido",
@@ -79,6 +101,7 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="cmd")
     add_run_parser(subparsers)
     add_produce_parser(subparsers)
+    add_pending_messages_parser(subparsers)
     return parser.parse_args()
 
 
@@ -94,6 +117,8 @@ def main():
             run(app)
         case "produce":
             produce(app, args)
+        case "pending-messages":
+            pending_messages(app, args)
 
 
 if __name__ == "__main__":
