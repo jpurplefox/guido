@@ -1,56 +1,12 @@
 import logging
 import argparse
-import json
 
 from guido.logconfig import init_logs
-from guido.messages import Message
 from guido.importer import import_app
+from guido.commands import commands
 
 
 logger = logging.getLogger("guido")
-
-
-def add_run_parser(subparsers):
-    subparsers.add_parser("run", help="Runs guido to start processing messages")
-
-
-def run(app):
-    logger.info("Guido is running")
-    app.run()
-
-
-def add_produce_parser(subparsers):
-    subparser = subparsers.add_parser("produce", help="Produce a message to a topic")
-    subparser.add_argument("topic", help="Topic to send the message")
-    subparser.add_argument("message", help="Message to be produced")
-
-
-def produce(app, args):
-    message = Message(topic=args.topic, value=json.loads(args.message))
-    logger.info(f"Producing {message}")
-    app.produce(message)
-
-
-def add_pending_messages_parser(subparsers):
-    subparser = subparsers.add_parser(
-        "pending-messages", help="Get pending messages in a topic partition"
-    )
-    subparser.add_argument("topic", help="Topic to check for pending messages")
-    subparser.add_argument(
-        "-p",
-        "--partition",
-        help="partition to check for pending messages",
-        type=int,
-        default=0,
-        required=False,
-    )
-
-
-def pending_messages(app, args):
-    pending_messages = app.get_pending_messages(args.topic, args.partition)
-    logger.info(
-        f"Pending messages for topic={args.topic} partition={args.partition}: {pending_messages}"
-    )
 
 
 def parse_args():
@@ -72,9 +28,8 @@ def parse_args():
         help="Path to log file. If no logfile is specified, stderr is used.",
     )
     subparsers = parser.add_subparsers(dest="cmd")
-    add_run_parser(subparsers)
-    add_produce_parser(subparsers)
-    add_pending_messages_parser(subparsers)
+    for command in commands.values():
+        command.add_subparser(subparsers)
     return parser.parse_args()
 
 
@@ -84,14 +39,10 @@ def main():
     init_logs(loglevel=args.loglevel, logfile=args.logfile)
     app = import_app(args.app)
     logger.info(f"Starting {args.app}")
+    if not args.cmd:
+        Run.run(app, args)
 
-    match args.cmd:
-        case None | "run":
-            run(app)
-        case "produce":
-            produce(app, args)
-        case "pending-messages":
-            pending_messages(app, args)
+    commands[args.cmd].run(app, args)
 
 
 if __name__ == "__main__":
