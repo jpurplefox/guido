@@ -1,6 +1,7 @@
 import json
 
 from kafka import KafkaConsumer, KafkaProducer, TopicPartition  # type: ignore
+from kafka.structs import OffsetAndMetadata  # type: ignore
 
 from typing import Callable, Protocol, Iterator
 from dataclasses import dataclass
@@ -20,11 +21,18 @@ class ProducedMessage:
     partition: int
 
 
+@dataclass
+class CommitData:
+    topic: str
+    offset: int
+    partition: int = 0
+
+
 class MessagesService(Protocol):
     def subscribe(self, topics: list[str]):
         ...
 
-    def commit(self):
+    def commit(self, data: CommitData | None = None):
         ...
 
     def get_messages(self) -> Iterator[ProducedMessage]:
@@ -41,17 +49,32 @@ class MessagesService(Protocol):
 
 
 class KafkaService:
-    def __init__(self, bootstrap_servers: str, group_id: str):
+    def __init__(
+        self,
+        bootstrap_servers: str,
+        group_id: str,
+        consumer_timeout_ms: float = float("inf"),
+    ):
         self.consumer = KafkaConsumer(
-            bootstrap_servers=bootstrap_servers, group_id=group_id
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+            consumer_timeout_ms=consumer_timeout_ms,
         )
         self.producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
     def subscribe(self, topics: list[str]):
         self.consumer.subscribe(topics)
 
-    def commit(self):
-        self.consumer.commit()
+    def commit(self, data: CommitData | None = None):
+        if data:
+            offsets = {
+                TopicPartition(data.topic, data.partition): OffsetAndMetadata(
+                    data.offset, None
+                )
+            }
+        else:
+            offsets = None
+        self.consumer.commit(offsets)
 
     def get_messages(self) -> Iterator[ProducedMessage]:
         for message in self.consumer:
@@ -102,9 +125,12 @@ class OnMemoryService:
     def subscribe(self, topics: list[str]):
         self.subscripted = topics
 
-    def commit(self):
-        for topic in self.subscripted:
-            self.commit_topic(topic)
+    def commit(self, data: CommitData | None = None):
+        if data:
+            self.commit_topic(data.topic)
+        else:
+            for topic in self.subscripted:
+                self.commit_topic(topic)
 
     def commit_topic(self, topic: str):
         consumed_messages = [

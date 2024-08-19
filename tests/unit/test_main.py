@@ -15,7 +15,7 @@ def app(on_memory_service):
 
 
 @pytest.fixture
-def message(app):
+def message():
     return Message("a_topic", {"data": "test"})
 
 
