@@ -3,7 +3,7 @@ import argparse
 
 from guido.logconfig import init_logs
 from guido.importer import import_app
-from guido.commands import commands
+from guido.commands import commands, Run
 
 
 logger = logging.getLogger("guido")
@@ -40,7 +40,7 @@ def main():
     app = import_app(args.app)
     logger.info(f"Starting {args.app}")
     if not args.cmd:
-        Run.run(app, args)
+        Run().run(app, args)
 
     commands[args.cmd].run(app, args)
 
