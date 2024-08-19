@@ -1,40 +1,13 @@
-import sys
-import os
-import importlib
 import logging
 import argparse
 import json
 
-from contextlib import contextmanager
-
 from guido.logconfig import init_logs
 from guido.messages import Message
+from guido.importer import import_app
 
 
 logger = logging.getLogger("guido")
-
-
-@contextmanager
-def ensure_cwd_in_path():
-    cwd = os.getcwd()
-    if cwd in sys.path:
-        yield
-    else:
-        sys.path.insert(0, cwd)
-        yield
-        sys.path.remove(cwd)
-
-
-def get_app(app_path):
-    full_path = app_path.split(".")
-    app_path = ".".join(full_path[:-1])
-    app_name = full_path[-1]
-
-    with ensure_cwd_in_path():
-        module = importlib.import_module(app_path)
-
-    app = getattr(module, app_name)
-    return app
 
 
 def add_run_parser(subparsers):
@@ -109,7 +82,7 @@ def main():
     args = parse_args()
 
     init_logs(loglevel=args.loglevel, logfile=args.logfile)
-    app = get_app(args.app)
+    app = import_app(args.app)
     logger.info(f"Starting {args.app}")
 
     match args.cmd:
