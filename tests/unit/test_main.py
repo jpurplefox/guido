@@ -1,29 +1,3 @@
-import pytest
-
-from guido import Guido
-from guido.messages import OnMemoryService, Message
-
-
-@pytest.fixture
-def on_memory_service():
-    return OnMemoryService()
-
-
-@pytest.fixture
-def app(on_memory_service):
-    return Guido(on_memory_service)
-
-
-@pytest.fixture
-def message():
-    return Message("a_topic", {"data": "test"})
-
-
-@pytest.fixture
-def produced_message(app, message):
-    return app.produce(message)
-
-
 def test_produce_a_message(app, message):
     produced_message = app.produce(message)
     app.messages_service.subscribe([message.topic])
@@ -34,17 +8,11 @@ def test_produce_a_message(app, message):
     assert list(app.messages_service.get_messages()) == [produced_message]
 
 
-def test_consume_a_message(app, produced_message):
-    processed = []
-
-    @app.subscribe(produced_message.topic)
-    def process_message(message):
-        processed.append(message)
-
+def test_consume_a_message(app, produced_message, processed_messages):
     app.run()
 
     assert app.get_last_committed(produced_message.topic) == produced_message.offset
-    assert processed == [produced_message.value]
+    assert processed_messages == [produced_message.value]
 
 
 def test_get_pending_messages(app, message):

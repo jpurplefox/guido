@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 
@@ -72,3 +73,34 @@ class PendingMessages:
 
 available_commands: list[Command] = [Run(), Produce(), PendingMessages()]
 commands: dict[str, Command] = {command.name: command for command in available_commands}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="guido",
+        description="Guido is a library that simplifies the integration with Apache Kafka.",
+    )
+    parser.add_argument("app", help="app instance to use (e.g. module.attr_name)")
+    parser.add_argument(
+        "-l",
+        "--loglevel",
+        help="Logging level.",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+    )
+    parser.add_argument(
+        "-f",
+        "--logfile",
+        help="Path to log file. If no logfile is specified, stderr is used.",
+    )
+    subparsers = parser.add_subparsers(dest="cmd")
+    for command in commands.values():
+        command.add_subparser(subparsers)
+    return parser.parse_args()
+
+
+def execute_command(app: Guido, args):
+    if not args.cmd:
+        Run().run(app, args)
+    else:
+        commands[args.cmd].run(app, args)
