@@ -24,13 +24,12 @@ Create and Start the Consumer: Use the Guido class and KafkaService to create a 
 Here’s a simple example of how to use guido in your project:
 
 ```python
-from guido import Guido, KafkaService
+from guido import Guido, KafkaConfig
 
-# Initialize Kafka service with connection parameters
-service = KafkaService(bootstrap_servers='localhost:29092', group_id='my_favorite_group')
-
-# Create a new Guido application with the Kafka service
-app = Guido(service)
+# Create a new Guido application
+app = Guido(
+    config=KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+)
 
 # Define a function to process messages from the 'my_topic' topic
 @app.subscribe('my_topic')
@@ -56,6 +55,12 @@ Also you can check how many messages there are in a topic partition pending to p
 ```
 guido test_app.app pending-messages my_topic
 ```
+
+## Error handling
+Guido has built-in error handling mechanisms to ensure that messages are processed reliably. If an exception is raised while processing a message, Guido captures the error and takes the necessary steps to manage it.
+
+1. Sends the message to a Dead Letter Topic (DLT): The problematic message is sent to a designated Dead Letter Topic (DLT). This helps in isolating messages that failed processing and allows for further investigation and troubleshooting. Guido creates a DLT named `<original_topic>_<group_id>_dlt`.
+2. Committing the Original Message: After sending the message to the DLT, Guido commits the original message's offset. This means that the consumer will not attempt to reprocess the same message, avoiding potential processing loops and ensuring that the consumer continues processing new messages.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.

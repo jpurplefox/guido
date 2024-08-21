@@ -2,17 +2,21 @@ import pytest
 
 from contextlib import contextmanager
 
-from guido import Guido, KafkaService, Message
+from guido import Guido, KafkaService, Message, KafkaConfig
 from guido.messages import CommitData
 
 
 @pytest.fixture
 def kafka_service():
     service = KafkaService(
-        bootstrap_servers="localhost:29092", group_id="test", consumer_timeout_ms=300000
+        KafkaConfig(
+            bootstrap_servers="localhost:29092",
+            group_id="test",
+            consumer_timeout_ms=300000,
+        )
     )
     yield service
-    service.consumer.close()
+    service.get_consumer().close()
 
 
 @pytest.fixture

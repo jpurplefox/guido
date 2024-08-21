@@ -1,17 +1,17 @@
 import pytest
 
 from guido import Guido
-from guido.messages import OnMemoryService, Message
+from guido.messages import OnMemoryService, Message, Config
 
 
 @pytest.fixture
 def on_memory_service():
-    return OnMemoryService()
+    return OnMemoryService(Config("test"))
 
 
 @pytest.fixture
 def app(on_memory_service):
-    return Guido(on_memory_service)
+    return Guido(messages_service=on_memory_service)
 
 
 @pytest.fixture
