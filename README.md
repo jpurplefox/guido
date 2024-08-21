@@ -59,8 +59,15 @@ guido test_app.app pending-messages my_topic
 ## Error handling
 Guido has built-in error handling mechanisms to ensure that messages are processed reliably. If an exception is raised while processing a message, Guido captures the error and takes the necessary steps to manage it.
 
-1. Sends the message to a Dead Letter Topic (DLT): The problematic message is sent to a designated Dead Letter Topic (DLT). This helps in isolating messages that failed processing and allows for further investigation and troubleshooting. Guido creates a DLT named `<original_topic>_<group_id>_dlt`.
+1. Sends the message to a Dead Letter Topic (DLT): The problematic message is sent to a designated Dead Letter Topic (DLT). This helps in isolating messages that failed processing and allows for further investigation and troubleshooting. Guido creates by default a DLT named `<original_topic>_<group_id>_dlt`.
 2. Committing the Original Message: After sending the message to the DLT, Guido commits the original message's offset. This means that the consumer will not attempt to reprocess the same message, avoiding potential processing loops and ensuring that the consumer continues processing new messages.
+
+If you want, you can tell guido what DLT to use for a message
+```
+@app.subscribe('my_topic', dead_letter_topic='custom_topic')
+def process_message(message: dict):
+    print(message)
+```
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.

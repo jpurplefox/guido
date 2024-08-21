@@ -1,6 +1,8 @@
 import logging
 
+from dataclasses import dataclass
 from typing import Callable, Type, Iterator
+
 from guido.messages import (
     MessagesService,
     Message,
@@ -19,6 +21,13 @@ class ImproperlyConfigured(Exception):
     pass
 
 
+@dataclass
+class SubscribedFunction:
+    func: TSubscribedFunction
+    topic: str
+    dead_letter_topic: str
+
+
 class Guido:
     def __init__(
         self,
@@ -30,13 +39,22 @@ class Guido:
         self.messages_service = messages_service
         self.messages_service_class = messages_service_class
 
-        self._topics: dict[str, TSubscribedFunction] = {}
+        self.subscribed_functions: list[SubscribedFunction] = []
+
+    def get_default_dlt(self, topic: str):
+        return f"{topic}_{self.get_group_id()}_dlt"
 
     def subscribe(
-        self, topic: str
+        self, topic: str, dead_letter_topic: str | None = None
     ) -> Callable[[TSubscribedFunction], TSubscribedFunction]:
+        if not dead_letter_topic:
+            dlt = self.get_default_dlt(topic)
+        else:
+            dlt = dead_letter_topic
+
         def decorator(func: TSubscribedFunction) -> TSubscribedFunction:
-            self._topics[topic] = func
+            function = SubscribedFunction(func=func, topic=topic, dead_letter_topic=dlt)
+            self.subscribed_functions.append(function)
             return func
 
         return decorator
@@ -61,23 +79,36 @@ class Guido:
     def get_pending_messages(self, topic: str, partition: int = 0) -> int:
         return self.get_messages_service().get_pending_messages(topic, partition)
 
-    def get_messages(self, topics: list[str] | None = None) -> Iterator[ProducedMessage]:
+    def get_messages(
+        self, topics: list[str] | None = None
+    ) -> Iterator[ProducedMessage]:
         if not topics:
-            topics = [key for key in self._topics.keys()]
+            topics = [function.topic for function in self.subscribed_functions]
+        logger.info(f"Subscribing to topics: {topics}")
         self.get_messages_service().subscribe(topics)
         return self.get_messages_service().get_messages()
 
+    def search_function_for_topic(self, topic: str):
+        return next(
+            function
+            for function in self.subscribed_functions
+            if function.topic == topic
+        )
+
+    def process_message(self, message: ProducedMessage):
+        subscribed_function = self.search_function_for_topic(message.topic)
+        try:
+            subscribed_function.func(message.value)
+        except Exception as exc:
+            logger.exception(f"Message {message} was not proccesed because of {exc}")
+            dlt_message = Message(
+                topic=subscribed_function.dead_letter_topic, value=message.value
+            )
+            logger.info(f"Producing dlt message: {dlt_message}")
+            self.produce(dlt_message)
+
     def run(self):
-        logger.info(f"Subscribing to topics: {self._topics.keys()}")
         for msg in self.get_messages():
             logger.debug(f"Message received in topic {msg.topic}")
-            try:
-                self._topics[msg.topic](msg.value)
-            except Exception as exc:
-                logger.error(f"Message {msg} was not proccesed because of {exc}")
-                dlt_message = Message(
-                    topic=f"{msg.topic}_{self.get_group_id()}_dlt", value=msg.value
-                )
-                logger.info(f"Producing dlt message: {dlt_message}")
-                self.produce(dlt_message)
+            self.process_message(msg)
             self.get_messages_service().commit()
