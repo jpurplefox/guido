@@ -28,7 +28,17 @@ class CommitData:
     partition: int = 0
 
 
+@dataclass
+class Config:
+    group_id: str
+
+
 class MessagesService(Protocol):
+    group_id: str
+
+    def __init__(self, parameters: Config):
+        ...
+
     def subscribe(self, topics: list[str]):
         ...
 
@@ -48,22 +58,41 @@ class MessagesService(Protocol):
         ...
 
 
+@dataclass
+class KafkaConfig(Config):
+    bootstrap_servers: str
+    consumer_timeout_ms: float = float("inf")
+
+
 class KafkaService:
     def __init__(
         self,
-        bootstrap_servers: str,
-        group_id: str,
-        consumer_timeout_ms: float = float("inf"),
+        parameters: KafkaConfig,
     ):
-        self.consumer = KafkaConsumer(
-            bootstrap_servers=bootstrap_servers,
-            group_id=group_id,
-            consumer_timeout_ms=consumer_timeout_ms,
-        )
-        self.producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+        self.parameters = parameters
+        self.group_id = parameters.group_id
+
+        self._consumer = None
+        self._producer = None
+
+    def get_consumer(self):
+        if not self._consumer:
+            self._consumer = KafkaConsumer(
+                bootstrap_servers=self.parameters.bootstrap_servers,
+                group_id=self.parameters.group_id,
+                consumer_timeout_ms=self.parameters.consumer_timeout_ms,
+            )
+        return self._consumer
+
+    def get_producer(self):
+        if not self._producer:
+            self._producer = KafkaProducer(
+                bootstrap_servers=self.parameters.bootstrap_servers
+            )
+        return self._producer
 
     def subscribe(self, topics: list[str]):
-        self.consumer.subscribe(topics)
+        self.get_consumer().subscribe(topics)
 
     def commit(self, data: CommitData | None = None):
         if data:
@@ -74,10 +103,10 @@ class KafkaService:
             }
         else:
             offsets = None
-        self.consumer.commit(offsets)
+        self.get_consumer().commit(offsets)
 
     def get_messages(self) -> Iterator[ProducedMessage]:
-        for message in self.consumer:
+        for message in self.get_consumer():
             yield ProducedMessage(
                 topic=message.topic,
                 value=json.loads(message.value.decode("utf-8")),
@@ -86,7 +115,7 @@ class KafkaService:
             )
 
     def produce(self, message: Message) -> ProducedMessage:
-        future = self.producer.send(
+        future = self.get_producer().send(
             message.topic, json.dumps(message.value).encode("utf-8")
         )
         result = future.get()
@@ -98,12 +127,14 @@ class KafkaService:
         )
 
     def get_last_committed(self, topic: str, partition: int = 0) -> int | None:
-        return self.consumer.committed(TopicPartition(topic, partition))
+        return self.get_consumer().committed(TopicPartition(topic, partition))
 
     def get_end_offset(self, topic: str, partition: int = 0) -> int:
         topic_partition = TopicPartition(topic, partition)
         try:
-            end_offset = self.consumer.end_offsets([topic_partition])[topic_partition]
+            end_offset = self.get_consumer().end_offsets([topic_partition])[
+                topic_partition
+            ]
         except KeyError:
             end_offset = -1
         return end_offset
@@ -116,11 +147,12 @@ class KafkaService:
 
 
 class OnMemoryService:
-    def __init__(self):
-        self.messages = []
-        self.subscripted = []
-        self.committed_messages = {}
-        self.consumed_messages = []
+    def __init__(self, parameters: Config):
+        self.messages: list[ProducedMessage] = []
+        self.subscripted: list[str] = []
+        self.committed_messages: dict[str, int] = {}
+        self.consumed_messages: list[ProducedMessage] = []
+        self.group_id: str = parameters.group_id
 
     def subscribe(self, topics: list[str]):
         self.subscripted = topics
@@ -139,7 +171,7 @@ class OnMemoryService:
         if consumed_messages:
             self.committed_messages[topic] = consumed_messages[-1].offset
 
-    def get_messages(self) -> Iterator[Message]:
+    def get_messages(self) -> Iterator[ProducedMessage]:
         for message in self.messages:
             if message.topic in self.subscripted:
                 self.consumed_messages.append(message)

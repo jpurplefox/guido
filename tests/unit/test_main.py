@@ -21,3 +21,21 @@ def test_get_pending_messages(app, message):
     produced_message = app.produce(message)
 
     assert app.get_pending_messages(produced_message.topic) == 1
+
+
+def test_dlt_topic(app, produced_message):
+    @app.subscribe(produced_message.topic)
+    def process(message):
+        raise Exception()
+
+    app.run()
+    assert app.get_pending_messages(produced_message.topic) == 0
+    assert (
+        app.get_pending_messages(f"{produced_message.topic}_{app.get_group_id()}_dlt")
+        == 1
+    )
+    message = next(
+        app.get_messages([f"{produced_message.topic}_{app.get_group_id()}_dlt"])
+    )
+
+    assert message.value == produced_message.value
