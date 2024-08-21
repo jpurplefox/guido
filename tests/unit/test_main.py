@@ -23,7 +23,7 @@ def test_get_pending_messages(app, message):
     assert app.get_pending_messages(produced_message.topic) == 1
 
 
-def test_dlt_topic(app, produced_message):
+def test_default_dlt_topic(app, produced_message):
     @app.subscribe(produced_message.topic)
     def process(message):
         raise Exception()
@@ -37,5 +37,20 @@ def test_dlt_topic(app, produced_message):
     message = next(
         app.get_messages([f"{produced_message.topic}_{app.get_group_id()}_dlt"])
     )
+
+    assert message.value == produced_message.value
+
+
+def test_customdlt_topic(app, produced_message):
+    custom_dlt = "custom_dlt"
+
+    @app.subscribe(produced_message.topic, custom_dlt)
+    def process(message):
+        raise Exception()
+
+    app.run()
+    assert app.get_pending_messages(produced_message.topic) == 0
+    assert app.get_pending_messages(custom_dlt) == 1
+    message = next(app.get_messages(custom_dlt))
 
     assert message.value == produced_message.value
