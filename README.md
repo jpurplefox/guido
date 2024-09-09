@@ -56,6 +56,16 @@ Also you can check how many messages there are in a topic partition pending to p
 guido test_app.app pending-messages my_topic
 ```
 
+### Configuring Guido with Environment Variables
+Guido can be configured using environment variables, which can be useful for managing configuration settings in different environments (e.g., development, staging, production) without hardcoding values in your source code.
+
+Just create your app without using any configuration
+``` python
+app = Guido()
+```
+Then set `GUIDO_HOSTS` and `GUIDO_GROUP_ID`. Take into account that any configuration passed to Guido constructor takes priority over environment variables
+
+
 ## Error handling
 Guido has built-in error handling mechanisms to ensure that messages are processed reliably. If an exception is raised while processing a message, Guido captures the error and takes the necessary steps to manage it.
 

@@ -9,16 +9,14 @@ from guido.messages import (
     ProducedMessage,
     KafkaService,
     KafkaConfig,
+    read_environ_configuration,
+    combine_configuration,
 )
 
 logger = logging.getLogger("guido")
 
 
 TSubscribedFunction = Callable[[dict], None]
-
-
-class ImproperlyConfigured(Exception):
-    pass
 
 
 @dataclass
@@ -35,7 +33,7 @@ class Guido:
         messages_service_class: Type[MessagesService] = KafkaService,
         messages_service: MessagesService | None = None,
     ):
-        self.config = config
+        self.config = config if config else KafkaConfig()
         self.messages_service = messages_service
         self.messages_service_class = messages_service_class
 
@@ -63,10 +61,10 @@ class Guido:
         return self.get_messages_service().group_id
 
     def get_messages_service(self) -> MessagesService:
+        env_config = read_environ_configuration()
+        config = combine_configuration(self.config, env_config)
         if not self.messages_service:
-            if not self.config:
-                raise ImproperlyConfigured()
-            self.messages_service = self.messages_service_class(self.config)
+            self.messages_service = self.messages_service_class(config)
         return self.messages_service
 
     def produce(self, message: Message) -> ProducedMessage:

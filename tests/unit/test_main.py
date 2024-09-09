@@ -1,3 +1,11 @@
+import pytest
+
+from unittest.mock import patch
+
+from guido import Guido, KafkaConfig
+from guido.messages import ImproperlyConfigured
+
+
 def test_produce_a_message(app, message):
     produced_message = app.produce(message)
     app.messages_service.subscribe([message.topic])
@@ -54,3 +62,57 @@ def test_customdlt_topic(app, produced_message):
     message = next(app.get_messages(custom_dlt))
 
     assert message.value == produced_message.value
+
+
+def test_environ_configuration():
+    expected_config = KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+    with patch(
+        "os.environ",
+        {
+            "GUIDO_HOSTS": expected_config.bootstrap_servers,
+            "GUIDO_GROUP_ID": expected_config.group_id,
+        },
+    ):
+        app = Guido()
+        message_service = app.get_messages_service()
+
+    assert message_service.config == expected_config
+
+
+def test_half_and_half_configuration():
+    expected_config = KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+    with patch("os.environ", {"GUIDO_HOSTS": expected_config.bootstrap_servers}):
+        app = Guido(KafkaConfig(group_id=expected_config.group_id))
+        message_service = app.get_messages_service()
+
+    assert message_service.config == expected_config
+
+    expected_config = KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+    with patch("os.environ", {"GUIDO_GROUP_ID": expected_config.group_id}):
+        app = Guido(KafkaConfig(bootstrap_servers=expected_config.bootstrap_servers))
+        message_service = app.get_messages_service()
+
+    assert message_service.config == expected_config
+
+
+def test_half_and_half_configuration():
+    expected_config = KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+    with patch("os.environ", {"GUIDO_HOSTS": expected_config.bootstrap_servers}):
+        app = Guido(KafkaConfig(group_id=expected_config.group_id))
+        message_service = app.get_messages_service()
+
+    assert message_service.config == expected_config
+
+    expected_config = KafkaConfig(bootstrap_servers="localhost:29092", group_id="foo")
+    with patch("os.environ", {"GUIDO_GROUP_ID": expected_config.group_id}):
+        app = Guido(KafkaConfig(bootstrap_servers=expected_config.bootstrap_servers))
+        message_service = app.get_messages_service()
+
+    assert message_service.config == expected_config
+
+
+def test_half_and_half_configuration():
+    with patch("os.environ", {}):
+        with pytest.raises(ImproperlyConfigured):
+            app = Guido()
+            message_service = app.get_messages_service()

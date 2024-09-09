@@ -1,4 +1,5 @@
 import json
+import os
 
 from kafka import KafkaConsumer, KafkaProducer, TopicPartition  # type: ignore
 from kafka.structs import OffsetAndMetadata  # type: ignore
@@ -30,13 +31,23 @@ class CommitData:
 
 @dataclass
 class Config:
-    group_id: str
+    group_id: str | None = None
+
+
+@dataclass
+class KafkaConfig(Config):
+    bootstrap_servers: str | None = None
+    consumer_timeout_ms: float = float("inf")
+
+
+class ImproperlyConfigured(Exception):
+    pass
 
 
 class MessagesService(Protocol):
     group_id: str
 
-    def __init__(self, parameters: Config):
+    def __init__(self, config: KafkaConfig):
         ...
 
     def subscribe(self, topics: list[str]):
@@ -58,19 +69,18 @@ class MessagesService(Protocol):
         ...
 
 
-@dataclass
-class KafkaConfig(Config):
-    bootstrap_servers: str
-    consumer_timeout_ms: float = float("inf")
-
-
 class KafkaService:
+    group_id: str
+
     def __init__(
         self,
-        parameters: KafkaConfig,
+        config: KafkaConfig,
     ):
-        self.parameters = parameters
-        self.group_id = parameters.group_id
+        self.config = config
+        group_id = config.group_id
+        if not self.config.bootstrap_servers or not group_id:
+            raise ImproperlyConfigured()
+        self.group_id = group_id
 
         self._consumer = None
         self._producer = None
@@ -78,16 +88,16 @@ class KafkaService:
     def get_consumer(self):
         if not self._consumer:
             self._consumer = KafkaConsumer(
-                bootstrap_servers=self.parameters.bootstrap_servers,
-                group_id=self.parameters.group_id,
-                consumer_timeout_ms=self.parameters.consumer_timeout_ms,
+                bootstrap_servers=self.config.bootstrap_servers,
+                group_id=self.config.group_id,
+                consumer_timeout_ms=self.config.consumer_timeout_ms,
             )
         return self._consumer
 
     def get_producer(self):
         if not self._producer:
             self._producer = KafkaProducer(
-                bootstrap_servers=self.parameters.bootstrap_servers
+                bootstrap_servers=self.config.bootstrap_servers
             )
         return self._producer
 
@@ -147,12 +157,18 @@ class KafkaService:
 
 
 class OnMemoryService:
-    def __init__(self, parameters: Config):
+    group_id: str
+
+    def __init__(self, config: Config):
         self.messages: list[ProducedMessage] = []
         self.subscripted: list[str] = []
         self.committed_messages: dict[str, int] = {}
         self.consumed_messages: list[ProducedMessage] = []
-        self.group_id: str = parameters.group_id
+
+        group_id = config.group_id
+        if not group_id:
+            raise ImproperlyConfigured()
+        self.group_id = group_id
 
     def subscribe(self, topics: list[str]):
         self.subscripted = topics
@@ -219,3 +235,19 @@ class OnMemoryService:
         ends = self.get_last_offset(topic)
 
         return ends - starts
+
+
+def read_environ_configuration() -> KafkaConfig:
+    config = KafkaConfig()
+    config.bootstrap_servers = os.environ.get("GUIDO_HOSTS")
+    config.group_id = os.environ.get("GUIDO_GROUP_ID")
+    return config
+
+
+def combine_configuration(first: KafkaConfig, second: KafkaConfig) -> KafkaConfig:
+    config = KafkaConfig()
+    config.bootstrap_servers = (
+        first.bootstrap_servers if first.bootstrap_servers else second.bootstrap_servers
+    )
+    config.group_id = first.group_id if first.group_id else second.group_id
+    return config
