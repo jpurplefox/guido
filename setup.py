@@ -8,7 +8,7 @@ long_description = open("README.md").read()
 
 setuptools.setup(
     name="guido-kafka",
-    version="0.1",
+    version="0.2",
     packages=setuptools.find_packages(),
     entry_points={"console_scripts": ["guido=guido.__main__:main"]},
     install_requires=requirements,
