@@ -13,6 +13,7 @@ def kafka_service():
             bootstrap_servers="localhost:29092",
             group_id="test",
             consumer_timeout_ms=300000,
+            security_protocol='PLAINTEXT',
         )
     )
     yield service

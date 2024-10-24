@@ -9,6 +9,7 @@ from guido.messages import (
     ProducedMessage,
     KafkaService,
     KafkaConfig,
+    get_default_configuration,
     read_environ_configuration,
     combine_configuration,
 )
@@ -61,8 +62,10 @@ class Guido:
         return self.get_messages_service().group_id
 
     def get_messages_service(self) -> MessagesService:
+        default_config = read_environ_configuration()
         env_config = read_environ_configuration()
-        config = combine_configuration(self.config, env_config)
+        config = combine_configuration(env_config, default_config)
+        config = combine_configuration(self.config, config)
         if not self.messages_service:
             self.messages_service = self.messages_service_class(config)
         return self.messages_service

@@ -38,6 +38,7 @@ class Config:
 class KafkaConfig(Config):
     bootstrap_servers: str | None = None
     consumer_timeout_ms: float = float("inf")
+    security_protocol: str | None = None
 
 
 class ImproperlyConfigured(Exception):
@@ -91,13 +92,15 @@ class KafkaService:
                 bootstrap_servers=self.config.bootstrap_servers,
                 group_id=self.config.group_id,
                 consumer_timeout_ms=self.config.consumer_timeout_ms,
+                security_protocol=self.config.security_protocol,
             )
         return self._consumer
 
     def get_producer(self):
         if not self._producer:
             self._producer = KafkaProducer(
-                bootstrap_servers=self.config.bootstrap_servers
+                bootstrap_servers=self.config.bootstrap_servers,
+                security_protocol=self.config.security_protocol,
             )
         return self._producer
 
@@ -237,10 +240,17 @@ class OnMemoryService:
         return ends - starts
 
 
+def get_default_configuration() -> KafkaConfig:
+    config = KafkaConfig()
+    config.security_protocol = "PLAINTEXT"
+    return config
+
+
 def read_environ_configuration() -> KafkaConfig:
     config = KafkaConfig()
     config.bootstrap_servers = os.environ.get("GUIDO_HOSTS")
     config.group_id = os.environ.get("GUIDO_GROUP_ID")
+    config.security_protocol = os.environ.get("GUIDO_SECURITY_PROTOCOL")
     return config
 
 
@@ -250,4 +260,7 @@ def combine_configuration(first: KafkaConfig, second: KafkaConfig) -> KafkaConfi
         first.bootstrap_servers if first.bootstrap_servers else second.bootstrap_servers
     )
     config.group_id = first.group_id if first.group_id else second.group_id
+    config.security_protocol = (
+        first.security_protocol if first.security_protocol else second.security_protocol
+    )
     return config
